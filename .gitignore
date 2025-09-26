@@ -1,0 +1,25 @@
+# Node / tooling
+node_modules/
+dist/
+build/
+.npmrc
+
+# Artifacts
+*.zip
+*.xpi
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editors/OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*

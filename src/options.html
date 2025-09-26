@@ -1,0 +1,91 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>OAuthPatch Settings</title>
+<style>
+    :root { color-scheme: light dark; }
+    body { font: 14px/1.45 system-ui, sans-serif; padding: 16px; max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 10px; }
+    .row { margin: 12px 0; }
+    .inline { display: flex; gap: 8px; align-items: center; }
+    .stretch { flex: 1 1 auto; }
+    input[type=text], textarea {
+        width: 100%; box-sizing: border-box; padding: 8px; border-radius: 6px; border: 1px solid #9999;
+    }
+    fieldset { border: 1px solid #9996; padding: 10px 12px; border-radius: 8px; }
+    legend { padding: 0 6px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button { padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+    .ok { color: #0a0; }
+    .err { color: #a00; }
+    .hint { color: #666; font-size: 12px; }
+    code { background: #0001; padding: 0 4px; border-radius: 4px; }
+    input[type=file]{ display:none; }
+    details { margin-top: 6px; }
+    summary { cursor: pointer; user-select: none; }
+</style>
+
+<h1>OAuthPatch — Settings</h1>
+
+
+<div class="row">
+    <label for="configUnified"><b>Config</b>: HTTPS URL, local JSON file, or pasted JSON</label>
+    <div class="inline">
+        <input
+                id="configUnified"
+                class="stretch"
+                type="text"
+                placeholder='Paste JSON {…}, or enter https://user:pass@host/path.json, or click Browse for a file'
+                title="Tip: You can paste JSON directly, use an HTTPS URL (optionally https://user:pass@host/path.json), or pick a local file via Browse. Resolution: file: → inline JSON → https:// URL."
+        />
+        <button id="browseBtn">Browse…</button>
+        <button id="applyUnified">Apply</button>
+        <input id="filePicker" type="file" accept=".json,application/json" />
+    </div>
+    <details>
+        <summary>Examples</summary>
+        <div class="hint">
+            <div><b>Inline JSON:</b> <code>{"hostname":"imap.example.com","issuer":"auth.example.com",…}</code></div>
+            <div><b>HTTPS URL:</b> <code>https://example.com/oauthpatch.json</code></div>
+            <div><b>HTTPS URL with Basic auth:</b> <code>https://user:pass@example.com/secure/oauthpatch.json</code></div>
+            <div><b>Local file:</b> click <i>Browse…</i>, choose <code>corp.json</code>, then press <i>Apply</i>.</div>
+            <div>Resolution when pressing <i>Apply</i>: <code>file:</code> (from Browse) → inline JSON (<code>{…}</code>) → <code>https://</code> URL.</div>
+        </div>
+    </details>
+    <div class="hint">
+        Startup sources (if you don't press Apply): #1 saved HTTPS URL → #2 <code>manifest.oauthpatch.configUrl</code> → #3 packaged <code>config.json</code>.
+    </div>
+</div>
+
+<fieldset class="row">
+    <legend>Secret storage</legend>
+    <label><input type="radio" name="storeSecret" value="prefs"> prefs (default)</label><br>
+    <label><input type="radio" name="storeSecret" value="login"> Login Manager</label><br>
+    <label><input type="radio" name="storeSecret" value="memory"> memory (session-only)</label>
+</fieldset>
+
+<div class="row">
+    <label for="pasteJson"><b>Paste JSON config</b> and apply directly:</label>
+    <textarea id="pasteJson" rows="8" placeholder='{
+  "hostname":"imap.example.com",
+  "issuer":"auth.example.com",
+  "clientId":"thunderbird",
+  "clientSecret":"CHANGE_ME",
+  "usePkce": true,
+  "authorizationEndpoint":"https://auth.example.com/realms/main/protocol/openid-connect/auth",
+  "tokenEndpoint":"https://auth.example.com/realms/main/protocol/openid-connect/token",
+  "redirectUri":"https://localhost",
+  "scopes":{"imap":"openid email profile","smtp":"openid email profile"}
+}'></textarea>
+</div>
+
+<div class="actions">
+    <button id="save">Save URL</button>
+    <button id="test">Test & Apply from URL</button>
+    <button id="applyJson">Apply pasted JSON</button>
+    <button id="loadProfile">Load from profile (oauthpatch.json)</button>
+    <button id="resetSecret">Reset secret</button>
+</div>
+
+<p id="status"></p>
+
+<script src="options.js"></script>

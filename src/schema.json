@@ -1,0 +1,52 @@
+[{
+  "namespace": "oauthpatch",
+  "description": "Inject OAuth2 provider + bootstrap config",
+  "functions": [
+    {
+      "name": "init",
+      "type": "function",
+      "description": "Injects custom OAuth2 provider using prefs",
+      "parameters": []
+    },
+    {
+      "name": "applyConfig",
+      "type": "function",
+      "description": "Write JSON config; secrets can be stored in Login Manager / memory / prefs",
+      "parameters": [
+        { "name": "config", "type": "object", "additionalProperties": true },
+        { "name": "options", "type": "object", "optional": true,
+          "properties": {
+            "force": { "type": "boolean", "optional": true },
+            "storeSecret": { "type": "string", "optional": true, "enum": ["login", "memory", "prefs"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "loadAndApplyFromProfile",
+      "type": "function",
+      "description": "Read oauthpatch JSON from Thunderbird profile dir and apply",
+      "parameters": [
+        { "name": "filename", "type": "string" },
+        { "name": "options", "type": "object", "optional": true,
+          "properties": {
+            "force": { "type": "boolean", "optional": true },
+            "storeSecret": { "type": "string", "optional": true, "enum": ["login", "memory", "prefs"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "resetSecret",
+      "type": "function",
+      "description": "Remove client secret from Login Manager and prefs",
+      "parameters": []
+    },
+    {
+      "name": "unlockSecret",
+      "type": "function",
+      "description": "Trigger a read to prompt Primary Password once per session",
+      "parameters": []
+    }
+  ]
+}]
