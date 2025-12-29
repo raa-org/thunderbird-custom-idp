@@ -103,13 +103,21 @@ Chosen in Options → **Secret storage**.
 ---
 
 ## Installation
+
+Download the latest `.xpi` from Releases:
+https://github.com/raa-org/thunderbird-custom-idp/releases/latest
+
+1. Thunderbird → **Add-ons and Themes** → ⚙️ → **Install Add-on From File…**
+2. Select the downloaded `.xpi`.
+3. Open the add-on **Options**, set your config source, then click **Test & Apply**.
+
 ### Temporary load (development)
 1. Thunderbird → **Tools → Add-ons and Themes → Gear icon → Debug Add-ons**.
 2. Click **Load Temporary Add-on** and pick `manifest.json`.
 
 ### Pack to XPI
-1. Zip the add‑on folder contents (the files next to `manifest.json`).
-2. Rename the archive to `oauthpatch.xpi`.
+1. Zip the add-on folder contents (the files next to `manifest.json`).
+2. Rename the archive to `thunderbird-custom-idp.xpi`.
 3. Install via **Add-ons and Themes → Install Add-on From File…**.
 
 > Local installations typically do **not** require signing; corporate builds may enforce different policies.
@@ -133,7 +141,6 @@ Status and errors are shown below the buttons.
 3. After successful login, Thunderbird completes the flow and stores refresh/access tokens as usual.
 4. Open **Tools → Developer Tools → Error Console** and search for logs containing `"[OAuthPatch]"`.
 
----
 
 ## Logging & diagnostics
 - Logs use `console.log/warn/error` with the `[OAuthPatch]` prefix.
