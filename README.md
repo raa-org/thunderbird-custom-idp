@@ -1,8 +1,11 @@
+[![Latest Release](https://img.shields.io/github/v/release/raa-org/thunderbird-custom-idp?sort=semver)](https://github.com/raa-org/thunderbird-custom-idp/releases/latest)
+
+
 # Thunderbird Custom IdP (OIDC/OAuth2) — **OAuthPatch**
 
 Adds a configurable **OAuth2/OIDC Identity Provider** for **IMAP/SMTP** in Thunderbird **without patching core**.
 
-✅ **Thunderbird 140+ only** (uses internal `OAuth2Providers.registerProvider/unregisterProvider` APIs).
+**Thunderbird 140+ only** (uses internal `OAuth2Providers.registerProvider/unregisterProvider` APIs).
 
 Configuration can be sourced from:
 - a remote **HTTPS URL** (stored in `storage.local.configUrl`), or
