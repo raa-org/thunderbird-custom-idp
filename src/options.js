@@ -25,10 +25,9 @@
     }
 
     async function loadState() {
-        const mf = browser.runtime.getManifest();
-        const defUrl = (mf.oauthpatch && mf.oauthpatch.configUrl) || '';
-        const { configUrl = defUrl, storeSecret = 'prefs' } =
+        const { configUrl = '', storeSecret = 'prefs' } =
             await browser.storage.local.get(['configUrl', 'storeSecret']);
+
         if (configUrl && !$unified.value) {
             $unified.placeholder ||= `Paste JSON {…}, or enter ${configUrl}, or click Browse for a file`;
         }
@@ -114,7 +113,6 @@
             ev.target.value = '';
         }
     }
-
 
     $browse.addEventListener('click', () => $picker.click());
     $picker.addEventListener('change', onPickFile);

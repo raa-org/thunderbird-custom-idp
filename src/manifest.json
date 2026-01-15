@@ -1,12 +1,12 @@
 {
   "manifest_version": 2,
   "name": "Thunderbird Custom IdP (OIDC/OAuth2)",
-  "version": "2.0.0",
-  "description": "Adds a configurable OAuth2/OIDC Identity Provider for IMAP/SMTP in Thunderbird.",
+  "version": "0.2.0",
+  "description": "Adds a configurable OAuth2/OIDC Identity Provider for IMAP/SMTP in Thunderbird (TB 140+).",
   "applications": {
     "gecko": {
       "id": "test@mail.com",
-      "strict_min_version": "115.0"
+      "strict_min_version": "140.0"
     }
   },
   "background": {
@@ -30,8 +30,5 @@
         "paths": [["oauthpatch"]]
       }
     }
-  },
-  "oauthpatch": {
-    "configUrl": "https://placeholder.json"
   }
 }

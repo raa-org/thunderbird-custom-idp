@@ -1,61 +1,97 @@
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/raa-org/thunderbird-custom-idp)](https://github.com/raa-org/thunderbird-custom-idp/releases/latest)
+# Thunderbird Custom IdP (OIDC/OAuth2) — **OAuthPatch**
 
-# Thunderbird Custom IdP (OIDC/OAuth2) — **OAuthPatch** (add‑on)
+Adds a configurable **OAuth2/OIDC Identity Provider** for **IMAP/SMTP** in Thunderbird **without patching core**.
 
-Adds a configurable OAuth2/OIDC Identity Provider for IMAP/SMTP in Thunderbird **without patching core**. Configuration can be sourced from a remote HTTPS URL, from the add‑on manifest, or from a packaged `config.json`. Changes are applied hot, without restarting Thunderbird.
+✅ **Thunderbird 140+ only** (uses internal `OAuth2Providers.registerProvider/unregisterProvider` APIs).
 
-> Verified with Thunderbird 139+ . Internal APIs may change in future TB versions; if something breaks, please open an issue.
+Configuration can be sourced from:
+- a remote **HTTPS URL** (stored in `storage.local.configUrl`), or
+- a packaged `config.json` at the add-on root,
+- or loaded **manually** from profile via Options (**Load from profile**).
+
+Changes are applied hot (no Thunderbird restart required).
+
+> Internal Thunderbird APIs may change in future versions. If something breaks after a TB update, please open an issue with logs.
 
 ---
 
 ## TL;DR (Quick Start)
-1. Install the add‑on (see **Installation** below).
-2. Open the add‑on **Options** and choose a configuration source:
-  - Paste an **HTTPS URL** to a JSON config and click **Test & Apply**; **or**
-  - Bundle a `config.json` at the root of the add‑on; **or**
-  - Click **Load from profile** to read `oauthpatch.json` from your Thunderbird profile directory.
+
+1. Install the add-on (see **Installation**).
+2. Open **Add-on Options** → set configuration using one of these:
+- Paste an **HTTPS URL** or inline JSON into the top field → click **Apply**; or
+- Click **Browse…** → pick a local JSON → click **Apply**; or
+- Paste JSON into the large textarea → **Apply pasted JSON**; or
+- **Load from profile (oauthpatch.json)** (TB 140+).
 3. Choose where to store `clientSecret`: `prefs` / `Login Manager` / `memory`.
-4. In your mail account settings set **Authentication method → OAuth2** (for both IMAP and SMTP) and sign in.
+4. In Account Settings set **Authentication method → OAuth2** (for both IMAP and SMTP), then sign in.
 
 ---
 
-## What the add‑on does
-- Injects (via a WebExtension Experiment API) custom provider data into Thunderbird's `OAuth2Providers` module.
-- Supplies values for **two extension points**:
-  - `getHostnameDetails(hostname, type)` → per‑domain IMAP/SMTP mapping to an issuer and scopes;
-  - `getIssuerDetails(issuer, type)` → issuer/client details and endpoints.
-- Works **only** for the configured `hostname`/`issuer`; for everything else the original Thunderbird logic is used (fallback).
-- Supports **hot reload**: changing the config URL in `storage.local` re‑applies the config and re‑initializes the patch automatically.
+## What the add-on does
 
-### Data flow
+- Stores config in Thunderbird prefs under `extensions.oauthpatch.*`.
+- On `init()` it registers a provider via:
+  - `OAuth2Providers.registerProvider(...)` with:
+    - issuer + endpoints + redirect URI
+    - clientId/clientSecret (optional)
+    - PKCE flag
+    - **one or many hostnames**
+    - a merged scopes string
+- On re-init it tries to unregister the previously registered issuer (stored in `extensions.oauthpatch._registeredIssuer`).
+- On add-on disable/update (non-app shutdown) it attempts to unregister the last issuer to avoid leaving stale entries behind.
+
+---
+
+## Data flow
+
 ```
-Options (URL/JSON/profile) → background.js → browser.oauthpatch.applyConfig()
-→ write prefs at extensions.oauthpatch.* → oauthpatch.init()
-→ override OAuth2Providers.getHostnameDetails / getIssuerDetails
-→ Thunderbird OAuth2 flow (IMAP/SMTP)
+Options (URL / file / inline JSON / profile)
+  → browser.oauthpatch.applyConfig()
+    → prefs: extensions.oauthpatch.*
+      → browser.oauthpatch.init()
+        → OAuth2Providers.registerProvider(...)
+          → Thunderbird OAuth2 flow (IMAP/SMTP)
 ```
 
 ---
 
 ## Configuration sources (precedence)
-1. **`storage.local.configUrl`** — URL from Options (if set).
-2. **`manifest.oauthpatch.configUrl`** — default URL from the add‑on manifest.
-3. **Packaged `config.json`** — file at the add‑on root.
-4. **Profile file** — **Load from profile** reads `oauthpatch.json` from your TB profile directory (applies once on click).
 
-### Remote loading constraints
-- **HTTPS only**.
-- Timeout: **10 seconds**.
-- Response size limit: **~128 KiB**.
-- Always fetched with `cache: no-store` to avoid stale data.
+**Automatic at startup:**
+1) `storage.local.configUrl` (set when you Apply an HTTPS URL in Options)
+2) Packaged `config.json` (add-on root)
+
+**Manual (on click in Options):**
+- **Load from profile** reads `oauthpatch.json` from your Thunderbird profile directory and applies it once.
+
+> Note: there is no manifest default URL fallback in v3.x.
+
+---
+
+## Remote loading constraints
+
+Remote config fetch (background):
+- **HTTPS only**
+- Timeout: **15 seconds**
+- Response size limit: **~256 KiB**
+- Fetched with `cache: no-store`
+
+Local file via Options:
+- Size limit: **128 KiB** (UI restriction)
+
+Basic auth is supported via URL form:
+`https://user:pass@example.com/secure/oauthpatch.json`
 
 ---
 
 ## `config.json` format
-Minimal example (Keycloak‑like IdP):
+
+Minimal example (Keycloak-like IdP):
+
 ```json
 {
-  "hostname": "imap.example.com",
+  "hostname": "imap.example.com smtp.example.com",
   "issuer": "auth.example.com",
   "clientId": "thunderbird",
   "clientSecret": "CHANGE_ME",
@@ -71,141 +107,141 @@ Minimal example (Keycloak‑like IdP):
 ```
 
 ### Fields
-- **hostname** — IMAP/SMTP host that should use the custom issuer. Compared case‑insensitively (`toLowerCase()`).
-- **issuer** — your IdP issuer host/domain. Compared case‑insensitively.
-- **clientId** — OAuth2 client ID.
-- **clientSecret** — **optional**. For public clients keep it empty and enable `usePkce: true`.
-- **usePkce** — enables PKCE (recommended, especially for public clients).
+
+- **hostname** — IMAP/SMTP host(s) that should use this issuer.
+  - Can contain **multiple hostnames** separated by spaces and/or commas:
+    - `"imap.example.com,smtp.example.com"`
+    - `"imap.example.com smtp.example.com"`
+  - Matching is case-insensitive (normalized to lower-case).
+- **issuer** — IdP issuer (host / domain). Case-insensitive.
+- **clientId** — OAuth2 client id.
+- **clientSecret** — optional. For public clients keep empty and set `usePkce: true`.
+- **usePkce** — boolean.
 - **authorizationEndpoint** — OIDC authorization endpoint URL.
 - **tokenEndpoint** — token endpoint URL.
-- **redirectUri** — redirect URI used by Thunderbird (often `https://localhost`).
-- **scopes.imap / scopes.smtp** — protocol‑specific scopes; if only `imap` is set, SMTP falls back to it.
+- **redirectUri** — redirection endpoint used by Thunderbird (commonly `https://localhost`).
+- **scopes.imap / scopes.smtp** — scopes by protocol.
+  - The add-on registers **a merged scopes union** of both strings.
+  - If you only set `scopes.imap`, you can set smtp same or leave it empty (it will still be merged).
 
-### Where it is stored in Thunderbird
-Preferences under the `extensions.oauthpatch.*` branch:
+---
+
+## Where it is stored in Thunderbird
+
+Preferences under `extensions.oauthpatch.*`:
+
 ```
-hostname, issuer, clientId, clientSecret (if mode = prefs),
-usePkce, authorizationEndpoint, tokenEndpoint, redirectUri,
-scopes.imap, scopes.smtp
+hostname
+issuer
+clientId
+clientSecret (only if mode = prefs)
+usePkce
+authorizationEndpoint
+tokenEndpoint
+redirectUri
+scopes.imap
+scopes.smtp
+
+_registeredIssuer   (internal bookkeeping for unregister on re-init)
 ```
 
 ---
 
 ## Secret storage modes
-Chosen in Options → **Secret storage**.
 
-- **prefs** (default) — stored as a string preference (`extensions.oauthpatch.clientSecret`). *Not encrypted*; use for testing.
-- **Login Manager** — saved to Thunderbird Login Manager under `oauth://<issuer>` (realm: `oauthpatch:client-secret`, username = `clientId`).
-  - With **Primary Password** enabled, the OS dialog appears on first access per session.
-  - Use **Reset secret** to remove it.
-- **memory** — kept in process memory for the current session only; disappears after TB restart.
+Choose in Options → **Secret storage**:
 
-> Tip: you can trigger the Primary Password prompt programmatically from the add‑on console with `browser.oauthpatch.unlockSecret()`.
+- **prefs** (default) — stored as plain pref `extensions.oauthpatch.clientSecret` (**not encrypted**).
+- **Login Manager** — saved into Thunderbird Login Manager:
+  - origin: `oauth://<issuer>`
+  - realm: `oauthpatch:client-secret`
+  - username: `<clientId>`
+  - password: `<clientSecret>`
+  - With **Primary Password** enabled, TB may prompt once per session.
+- **memory** — stored only in memory (session-only), cleared on TB restart.
+
+Tip (debug): you can trigger a read and thus prompt Primary Password:
+```js
+await browser.oauthpatch.unlockSecret();
+```
 
 ---
 
 ## Installation
 
-Download the latest `.xpi` from Releases:
-https://github.com/raa-org/thunderbird-custom-idp/releases/latest
-
-1. Thunderbird → **Add-ons and Themes** → ⚙️ → **Install Add-on From File…**
-2. Select the downloaded `.xpi`.
-3. Open the add-on **Options**, set your config source, then click **Test & Apply**.
-
 ### Temporary load (development)
-1. Thunderbird → **Tools → Add-ons and Themes → Gear icon → Debug Add-ons**.
-2. Click **Load Temporary Add-on** and pick `manifest.json`.
+
+1. Thunderbird → **Tools → Add-ons and Themes → Gear icon → Debug Add-ons**
+2. Click **Load Temporary Add-on** and pick `manifest.json`
 
 ### Pack to XPI
-1. Zip the add-on folder contents (the files next to `manifest.json`).
-2. Rename the archive to `thunderbird-custom-idp.xpi`.
-3. Install via **Add-ons and Themes → Install Add-on From File…**.
 
-> Local installations typically do **not** require signing; corporate builds may enforce different policies.
+1. Zip the add-on folder contents (the files next to `manifest.json`)
+2. Rename to `oauthpatch.xpi`
+3. Install via **Add-ons and Themes → Install Add-on From File…**
+
+> Local installations typically do not require signing; enterprise builds may enforce policies.
 
 ---
 
-## Options (UI)
-- **Remote config URL (HTTPS)** — saves the URL and applies config on the fly.
-- **Secret storage** — `prefs` / `Login Manager` / `memory`.
-- **Paste JSON config** — paste JSON and apply without URL or file.
-- **Load from profile** — reads `oauthpatch.json` from the TB profile directory.
-- **Reset secret** — removes the secret from prefs and Login Manager.
+## Options UI
 
-Status and errors are shown below the buttons.
+Top **Config** field supports:
+- `https://...` URL (optionally with `user:pass@`)
+- inline JSON (`{...}`)
+- local file via **Browse…** (then `file:<name>` placeholder appears)
+
+Buttons that are functional in the current code path:
+- **Apply** (top row) — applies file / inline JSON / URL (URL is also saved to `storage.local.configUrl`)
+- **Apply pasted JSON**
+- **Load from profile (oauthpatch.json)** (TB 140+)
+- **Reset secret**
+
+Status / errors are shown below.
 
 ---
 
 ## Verify it works
-1. In **Account Settings**, pick **Authentication method → OAuth2** for both IMAP and SMTP.
-2. Connect: your IdP login page should appear.
-3. After successful login, Thunderbird completes the flow and stores refresh/access tokens as usual.
-4. Open **Tools → Developer Tools → Error Console** and search for logs containing `"[OAuthPatch]"`.
 
+1. In **Account Settings**, set **Authentication method → OAuth2** for both IMAP and SMTP.
+2. Connect: your IdP login page should appear.
+3. After successful login, Thunderbird completes OAuth2 and stores tokens as usual.
+4. Open **Tools → Developer Tools → Error Console** and search for `"[OAuthPatch]"`.
+
+---
 
 ## Logging & diagnostics
-- Logs use `console.log/warn/error` with the `[OAuthPatch]` prefix.
-- Typical messages:
-  - `Remote config applied from: <url>` — remote config fetched and applied.
-  - `Packaged config.json applied` — packaged config used.
-  - `bootstrap deferred: no config source available yet` — no config source yet (e.g., URL not set).
-  - `Injected hostname for: <host> <type>` / `Injected issuer for: <issuer>` — overrides are active.
+
+Logs use `console.log/warn/error` with the `[OAuthPatch]` prefix.
+
+Typical messages:
+- `background loaded`
+- `Remote config applied from: <origin>`
+- `Packaged config.json applied`
+- `provider registered via registerProvider: <issuer> [hostnames...]`
+- `unregistered previous provider: <issuer>`
+- `init failed: ...`
+
+If something fails after a Thunderbird update, include:
+- Thunderbird version (must be **140+**)
+- the Error Console output around `[OAuthPatch]`
+- whether you used URL/file/pasted JSON/profile
 
 ---
-
 
 ## Design notes & limitations
-- Single active provider at a time (one `hostname`/`issuer`). Multi‑provider configs are not supported out of the box.
-- Overrides are targeted: only for the configured `hostname`/`issuer`. Everything else falls back to Thunderbird defaults.
-- Storing secrets in `prefs` is **not** secure; prefer `Login Manager` or `memory` for production.
-- Remote load limits: 10 s timeout, ~128 KiB, HTTPS only.
 
----
-
-## Security
-- With **Login Manager**, secrets are protected by TB/OS facilities (and Primary Password, if enabled).
-- Remote config is fetched over **HTTPS** with a strict size/time budget.
-- The add‑on **does not read mail data** by itself — `accountsRead`/`messagesRead` permissions are conservative and can be removed if not needed.
-
----
-
-## Examples
-### Public client (no secret, PKCE)
-```json
-{
-  "hostname": "imap.example.com",
-  "issuer": "auth.example.com",
-  "clientId": "tb-public",
-  "usePkce": true,
-  "authorizationEndpoint": "https://auth.example.com/realms/main/protocol/openid-connect/auth",
-  "tokenEndpoint": "https://auth.example.com/realms/main/protocol/openid-connect/token",
-  "redirectUri": "https://localhost",
-  "scopes": { "imap": "openid email", "smtp": "openid email" }
-}
-```
-
-### Confidential client (secret in Login Manager)
-1) In Options select **Login Manager**.
-2) Apply the config:
-```json
-{
-  "hostname": "imap.corp.local",
-  "issuer": "sso.corp.local",
-  "clientId": "thunderbird",
-  "clientSecret": "<SECRET>",
-  "usePkce": false,
-  "authorizationEndpoint": "https://sso.corp.local/realms/main/protocol/openid-connect/auth",
-  "tokenEndpoint": "https://sso.corp.local/realms/main/protocol/openid-connect/token",
-  "redirectUri": "https://localhost",
-  "scopes": { "imap": "openid email profile" }
-}
-```
+- Requires **Thunderbird 140+**.
+- Uses internal `OAuth2Providers` APIs; they may change between Thunderbird versions.
+- Registers **one issuer/provider at a time**, but supports **multiple hostnames** for that provider.
+- `prefs` secret storage is not secure; prefer **Login Manager** or **memory**.
 
 ---
 
 ## Programmatic API (debugging)
-Available in the add‑on context:
+
+Available in the add-on context:
+
 ```js
 await browser.oauthpatch.applyConfig({...}, { force: true, storeSecret: "login" });
 await browser.oauthpatch.init();
@@ -216,13 +252,6 @@ await browser.oauthpatch.loadAndApplyFromProfile("oauthpatch.json", { force: tru
 
 ---
 
-## Known issues / TODO
-- [ ] Support multiple providers in a single config.
-- [ ] UI control to call `unlockSecret()` (currently only via console).
-- [ ] Reduce permissions to the bare minimum.
-
----
-
 ## License
 
-
+MIT (see `LICENSE`).

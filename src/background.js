@@ -88,14 +88,11 @@ async function readStore(k) {
 }
 
 async function bootstrap() {
-    const manifest = browser.runtime.getManifest();
     const storedUrl = await readStore("configUrl");
     const storedMode = await readStore("storeSecret") || "prefs";
-    const manifestUrl = manifest.oauthpatch && manifest.oauthpatch.configUrl;
 
     let applied = false;
     if (storedUrl) applied = await tryLoadRemote(storedUrl, storedMode);
-    if (!applied && manifestUrl && isHttpsUrl(manifestUrl)) applied = await tryLoadRemote(manifestUrl, storedMode);
     if (!applied) applied = await tryLoadPackaged();
 
     try {
