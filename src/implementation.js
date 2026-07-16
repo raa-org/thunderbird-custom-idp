@@ -235,14 +235,38 @@ this.oauthpatch = class extends ExtensionCommon.ExtensionAPI {
         }
 
         async function readProfileJson(filename) {
-            const io = importAny(["resource://gre/modules/IOUtils.sys.mjs", "resource://gre/modules/PathUtils.sys.mjs"]);
-            if (io && io.IOUtils && io.PathUtils) {
-                const { IOUtils, PathUtils } = io;
-                const path = PathUtils.join(PathUtils.profileDir, filename);
-                const text = await IOUtils.readUTF8(path);
+            const dirSvc = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties);
+            const profileFile = dirSvc.get("ProfD", Ci.nsIFile);
+            profileFile.append(filename);
+            if (!profileFile.exists()) {
+                throw new Error(`Profile config not found: ${profileFile.path}`);
+            }
+
+            const io = importAny(["resource://gre/modules/IOUtils.sys.mjs"]);
+            if (io && io.IOUtils) {
+                const text = await io.IOUtils.readUTF8(profileFile.path);
                 return JSON.parse(text);
             }
-            throw new Error("IOUtils/PathUtils not available (requires Thunderbird 140+)");
+
+            const fileStream = Cc["@mozilla.org/network/file-input-stream;1"]
+                .createInstance(Ci.nsIFileInputStream);
+            const converterStream = Cc["@mozilla.org/intl/converter-input-stream;1"]
+                .createInstance(Ci.nsIConverterInputStream);
+
+            try {
+                fileStream.init(profileFile, 0x01, 0o444, 0);
+                converterStream.init(fileStream, "UTF-8", 0, 0);
+
+                let text = "";
+                const chunk = {};
+                while (converterStream.readString(0xffffffff, chunk) !== 0) {
+                    text += chunk.value;
+                }
+                return JSON.parse(text);
+            } finally {
+                try { converterStream.close(); } catch {}
+                try { fileStream.close(); } catch {}
+            }
         }
 
         function validateProvider(obj, index = 0) {

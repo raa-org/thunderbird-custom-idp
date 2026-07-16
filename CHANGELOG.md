@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-07-16
+### Fixed
+- Fix **Load from profile** on Thunderbird 140 ESR by resolving `oauthpatch.json` from the current profile directory and falling back to XPCOM file streams when `IOUtils` is unavailable in the add-on experiment context.
+
 ## [0.3.0] - 2026-07-16
 ### Added
 - Support for registering multiple OAuth2/OIDC providers from a single `providers` array.
