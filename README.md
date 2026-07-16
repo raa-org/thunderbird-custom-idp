@@ -291,7 +291,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-xpi.ps1 -SevenZipPath "
 The script reads the version from `src/manifest.json` and creates:
 
 ```text
-dist\oauthpatch-v<version>.xpi
+dist\thunderbird-custom-idp-v<version>.xpi
 ```
 
 ---
