@@ -64,22 +64,25 @@
 
 <div class="row">
     <label for="pasteJson"><b>Paste JSON config</b> and apply directly:</label>
-    <textarea id="pasteJson" rows="8" placeholder='{
-  "hostname":"imap.example.com",
-  "issuer":"auth.example.com",
-  "clientId":"thunderbird",
-  "clientSecret":"CHANGE_ME",
-  "usePkce": true,
-  "authorizationEndpoint":"https://auth.example.com/realms/main/protocol/openid-connect/auth",
-  "tokenEndpoint":"https://auth.example.com/realms/main/protocol/openid-connect/token",
-  "redirectUri":"https://localhost",
-  "scopes":{"imap":"openid email profile","smtp":"openid email profile"}
+<textarea id="pasteJson" rows="8" placeholder='{
+  "disableExchangeAutodiscovery": true,
+  "providers": [
+    {
+      "name":"production",
+      "hostname":"imap.example.com smtp.example.com",
+      "issuer":"auth.example.com",
+      "clientId":"thunderbird",
+      "usePkce":true,
+      "authorizationEndpoint":"https://auth.example.com/authorize",
+      "tokenEndpoint":"https://auth.example.com/token",
+      "redirectUri":"https://localhost",
+      "scopes":{"imap":"openid email profile","smtp":"openid email profile"}
+    }
+  ]
 }'></textarea>
 </div>
 
 <div class="actions">
-    <button id="save">Save URL</button>
-    <button id="test">Test & Apply from URL</button>
     <button id="applyJson">Apply pasted JSON</button>
     <button id="loadProfile">Load from profile (oauthpatch.json)</button>
     <button id="resetSecret">Reset secret</button>

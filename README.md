@@ -34,15 +34,15 @@ Changes are applied hot (no Thunderbird restart required).
 ## What the add-on does
 
 - Stores config in Thunderbird prefs under `extensions.oauthpatch.*`.
-- On `init()` it registers a provider via:
+- On `init()` it registers every configured provider via:
   - `OAuth2Providers.registerProvider(...)` with:
     - issuer + endpoints + redirect URI
     - clientId/clientSecret (optional)
     - PKCE flag
     - **one or many hostnames**
     - a merged scopes string
-- On re-init it tries to unregister the previously registered issuer (stored in `extensions.oauthpatch._registeredIssuer`).
-- On add-on disable/update (non-app shutdown) it attempts to unregister the last issuer to avoid leaving stale entries behind.
+- On re-init it unregisters the previously registered issuers (stored in `extensions.oauthpatch._registeredIssuers`).
+- On add-on disable/update (non-app shutdown) it attempts to unregister all managed issuers to avoid leaving stale entries behind.
 
 ---
 
@@ -64,11 +64,13 @@ Options (URL / file / inline JSON / profile)
 **Automatic at startup:**
 1) `storage.local.configUrl` (set when you Apply an HTTPS URL in Options)
 2) Packaged `config.json` (add-on root)
+3) Existing saved provider config in Thunderbird prefs
 
 **Manual (on click in Options):**
 - **Load from profile** reads `oauthpatch.json` from your Thunderbird profile directory and applies it once.
+- Applying inline JSON, a local file, or a profile config clears the saved HTTPS URL so it will not overwrite that manual config on the next startup.
 
-> Note: there is no manifest default URL fallback in v3.x.
+> Note: there is no manifest default URL fallback in the current version.
 
 ---
 
@@ -89,6 +91,64 @@ Basic auth is supported via URL form:
 ---
 
 ## `config.json` format
+
+Multiple providers can be configured with a `providers` array:
+
+```json
+{
+  "disableExchangeAutodiscovery": true,
+  "providers": [
+    {
+      "name": "production",
+      "hostname": "imap.example.com smtp.example.com",
+      "issuer": "auth.example.com",
+      "clientId": "thunderbird",
+      "usePkce": true,
+      "authorizationEndpoint": "https://auth.example.com/authorize",
+      "tokenEndpoint": "https://auth.example.com/token",
+      "redirectUri": "https://localhost",
+      "scopes": { "imap": "openid email profile", "smtp": "openid email profile" }
+    },
+    {
+      "name": "testing",
+      "hostname": "imap.test.example.com smtp.test.example.com",
+      "issuer": "auth.test.example.com",
+      "clientId": "thunderbird-test",
+      "usePkce": true,
+      "authorizationEndpoint": "https://auth.test.example.com/authorize",
+      "tokenEndpoint": "https://auth.test.example.com/token",
+      "redirectUri": "https://localhost",
+      "scopes": { "imap": "openid email profile", "smtp": "openid email profile" }
+    }
+  ]
+}
+```
+
+Issuers and hostnames must be unique across providers. The original single-provider format remains supported.
+
+To replace a built-in Thunderbird mapping (for example Microsoft 365), opt in per provider:
+
+```json
+{
+  "providers": [
+    {
+      "hostname": "outlook.office365.com smtp.office365.com",
+      "issuer": "auth.example.com",
+      "clientId": "thunderbird",
+      "usePkce": true,
+      "overrideBuiltIn": true,
+      "authorizationEndpoint": "https://auth.example.com/authorize",
+      "tokenEndpoint": "https://auth.example.com/token",
+      "redirectUri": "https://localhost",
+      "scopes": { "imap": "openid email", "smtp": "openid email" }
+    }
+  ]
+}
+```
+
+Overrides use exact hostname matching and are removed when the add-on is disabled. The OAuth tokens returned by the custom provider must still be accepted by the target IMAP/SMTP servers.
+
+Exchange Autodiscovery is disabled by default so Account Hub uses the standard IMAP/SMTP autoconfig without opening a parallel Microsoft Exchange login. Set root-level `disableExchangeAutodiscovery` to `false` to opt out. The add-on restores the previous Thunderbird preference when this option is disabled or the add-on is unloaded.
 
 Minimal example (Keycloak-like IdP):
 
@@ -120,6 +180,8 @@ Minimal example (Keycloak-like IdP):
 - **clientId** — OAuth2 client id.
 - **clientSecret** — optional. For public clients keep empty and set `usePkce: true`.
 - **usePkce** — boolean.
+- **overrideBuiltIn** — explicitly replace Thunderbird's built-in OAuth mapping for the listed exact hostnames.
+- **disableExchangeAutodiscovery** — root-level boolean, default `true`; set to `false` to allow Account Hub's parallel Exchange discovery.
 - **authorizationEndpoint** — OIDC authorization endpoint URL.
 - **tokenEndpoint** — token endpoint URL.
 - **redirectUri** — redirection endpoint used by Thunderbird (commonly `https://localhost`).
@@ -131,22 +193,20 @@ Minimal example (Keycloak-like IdP):
 
 ## Where it is stored in Thunderbird
 
-Preferences under `extensions.oauthpatch.*`:
+Provider configuration is stored as JSON under:
 
 ```
-hostname
-issuer
-clientId
-clientSecret (only if mode = prefs)
-usePkce
-authorizationEndpoint
-tokenEndpoint
-redirectUri
-scopes.imap
-scopes.smtp
-
-_registeredIssuer   (internal bookkeeping for unregister on re-init)
+providers             (provider array; includes clientSecret on each provider only in prefs mode)
+secretMode
+_registeredIssuers    (internal bookkeeping for unregister on re-init)
+disableExchangeAutodiscovery
+_exchangeAutodiscoveryOverrideActive
+_exchangeAutodiscoveryOriginalHadUserValue
+_exchangeAutodiscoveryOriginalValue
 ```
+
+Existing flat preferences are read as a legacy single-provider configuration.
+The `_exchangeAutodiscovery...` values are internal bookkeeping used to restore Thunderbird's previous Exchange Autodiscovery preference.
 
 ---
 
@@ -154,7 +214,9 @@ _registeredIssuer   (internal bookkeeping for unregister on re-init)
 
 Choose in Options → **Secret storage**:
 
-- **prefs** (default) — stored as plain pref `extensions.oauthpatch.clientSecret` (**not encrypted**).
+- **prefs** (default) — stored unencrypted inside the JSON pref
+  `extensions.oauthpatch.providers` as `clientSecret` on each provider.
+  Legacy flat configs may use `extensions.oauthpatch.clientSecret`.
 - **Login Manager** — saved into Thunderbird Login Manager:
   - origin: `oauth://<issuer>`
   - realm: `oauthpatch:client-secret`
@@ -185,6 +247,35 @@ await browser.oauthpatch.unlockSecret();
 
 > Local installations typically do not require signing; enterprise builds may enforce policies.
 
+### Pack with 7-Zip
+
+Install 7-Zip and make sure `7z.exe` is available in `PATH`, or installed in
+`C:\Program Files\7-Zip\7z.exe`.
+
+Run from the repository root:
+
+```bat
+scripts\build-xpi.cmd
+```
+
+PowerShell equivalent:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-xpi.ps1
+```
+
+If 7-Zip is installed elsewhere, pass the path explicitly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-xpi.ps1 -SevenZipPath "C:\Tools\7-Zip\7z.exe"
+```
+
+The script reads the version from `src/manifest.json` and creates:
+
+```text
+dist\oauthpatch-v<version>.xpi
+```
+
 ---
 
 ## Options UI
@@ -195,9 +286,9 @@ Top **Config** field supports:
 - local file via **Browse…** (then `file:<name>` placeholder appears)
 
 Buttons that are functional in the current code path:
-- **Apply** (top row) — applies file / inline JSON / URL (URL is also saved to `storage.local.configUrl`)
+- **Apply** (top row) — applies file / inline JSON / URL. HTTPS URLs are saved to `storage.local.configUrl`; file and inline JSON configs clear that saved URL.
 - **Apply pasted JSON**
-- **Load from profile (oauthpatch.json)** (TB 140+)
+- **Load from profile (oauthpatch.json)** (TB 140+; clears the saved URL)
 - **Reset secret**
 
 Status / errors are shown below.
@@ -236,7 +327,7 @@ If something fails after a Thunderbird update, include:
 
 - Requires **Thunderbird 140+**.
 - Uses internal `OAuth2Providers` APIs; they may change between Thunderbird versions.
-- Registers **one issuer/provider at a time**, but supports **multiple hostnames** for that provider.
+- Registers multiple issuers/providers at once; each provider can use multiple hostnames.
 - `prefs` secret storage is not secure; prefer **Login Manager** or **memory**.
 
 ---

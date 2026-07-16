@@ -11,7 +11,7 @@
     {
       "name": "applyConfig",
       "type": "function",
-      "description": "Write JSON config; secrets can be stored in Login Manager / memory / prefs",
+      "description": "Write one provider or a {providers: [...]} config, optionally overriding built-in mappings and disabling Exchange Autodiscovery; secrets can be stored in Login Manager / memory / prefs",
       "parameters": [
         { "name": "config", "type": "object", "additionalProperties": true },
         { "name": "options", "type": "object", "optional": true,

@@ -53,6 +53,7 @@
         await browser.storage.local.set({ storeSecret: mode });
         await browser.oauthpatch.applyConfig(json, { force: true, storeSecret: mode });
         await browser.oauthpatch.init();
+        await browser.storage.local.remove('configUrl');
     }
 
     async function applyUnified() {
@@ -134,14 +135,17 @@
             await browser.storage.local.set({ storeSecret: mode });
             await browser.oauthpatch.loadAndApplyFromProfile('oauthpatch.json', { force: true, storeSecret: mode });
             await browser.oauthpatch.init();
+            await browser.storage.local.remove('configUrl');
             setStatus('Profile config applied');
         })().catch(e => setStatus(e.message, false))
     );
 
     document.getElementById('resetSecret').addEventListener('click', () =>
-        browser.oauthpatch.resetSecret()
-            .then(() => setStatus('Secret removed from prefs & Login Manager'))
-            .catch(e => setStatus(e.message, false))
+        (async () => {
+            await browser.oauthpatch.resetSecret();
+            await browser.oauthpatch.init();
+            setStatus('Secret removed from prefs & Login Manager');
+        })().catch(e => setStatus(e.message, false))
     );
 
     await loadState();
