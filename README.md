@@ -27,7 +27,25 @@ Changes are applied hot (no Thunderbird restart required).
 - Paste JSON into the large textarea → **Apply pasted JSON**; or
 - **Load from profile (oauthpatch.json)** (TB 140+).
 3. Choose where to store `clientSecret`: `prefs` / `Login Manager` / `memory`.
-4. In Account Settings set **Authentication method → OAuth2** (for both IMAP and SMTP), then sign in.
+4. Continue in **Account Hub** and sign in on your IdP authorization page.
+
+For an existing account, open **Account Settings** and make sure **Authentication method** is set to **OAuth2** for both IMAP and SMTP.
+
+---
+
+## Account Hub setup
+
+After the add-on has been installed and your OAuth2/OIDC provider config has been applied successfully, return to Thunderbird Account Hub.
+
+1. Enter the account name and email address, then click **Continue**.
+
+![Account Hub: enter name and email](docs/screenshots/account-hub-01-start.png)
+
+2. Account Hub should pick up the IMAP/SMTP settings for the configured hostname. Review the detected settings, then continue.
+
+![Account Hub: detected provider settings](docs/screenshots/account-hub-02-start.png)
+
+3. On the next step, Thunderbird should open your IdP authorization page. Complete the login there, then Thunderbird will finish adding the account with OAuth2 authentication.
 
 ---
 
@@ -292,22 +310,6 @@ Buttons that are functional in the current code path:
 - **Reset secret**
 
 Status / errors are shown below.
-
----
-
-## Account Hub setup
-
-After the add-on has been installed and your OAuth2/OIDC provider config has been applied successfully, return to Thunderbird Account Hub.
-
-1. Enter the account name and email address, then click **Continue**.
-
-![Account Hub: enter name and email](docs/screenshots/account-hub-01-start.png)
-
-2. Account Hub should pick up the IMAP/SMTP settings for the configured hostname. Review the detected settings, then continue.
-
-![Account Hub: detected provider settings](docs/screenshots/account-hub-02-start.png)
-
-3. On the next step, Thunderbird should open your IdP authorization page. Complete the login there, then Thunderbird will finish adding the account with OAuth2 authentication.
 
 ---
 
