@@ -295,6 +295,22 @@ Status / errors are shown below.
 
 ---
 
+## Account Hub setup
+
+After the add-on has been installed and your OAuth2/OIDC provider config has been applied successfully, return to Thunderbird Account Hub.
+
+1. Enter the account name and email address, then click **Continue**.
+
+![Account Hub: enter name and email](docs/screenshots/account-hub-01-start.png)
+
+2. Account Hub should pick up the IMAP/SMTP settings for the configured hostname. Review the detected settings, then continue.
+
+![Account Hub: detected provider settings](docs/screenshots/account-hub-02-start.png)
+
+3. On the next step, Thunderbird should open your IdP authorization page. Complete the login there, then Thunderbird will finish adding the account with OAuth2 authentication.
+
+---
+
 ## Verify it works
 
 1. In **Account Settings**, set **Authentication method → OAuth2** for both IMAP and SMTP.
