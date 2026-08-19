@@ -205,7 +205,8 @@ Minimal example (Keycloak-like IdP):
 - **redirectUri** — redirection endpoint used by Thunderbird (commonly `https://localhost`).
 - **scopes.imap / scopes.smtp** — scopes by protocol.
   - The add-on registers **a merged scopes union** of both strings.
-  - If you only set `scopes.imap`, you can set smtp same or leave it empty (it will still be merged).
+  - Define a non-empty scope for every protocol that should use OAuth2.
+    For IMAP and SMTP accounts, both `scopes.imap` and `scopes.smtp` are required.
 
 ---
 
@@ -318,13 +319,17 @@ Status / errors are shown below.
 1. In **Account Settings**, set **Authentication method → OAuth2** for both IMAP and SMTP.
 2. Connect: your IdP login page should appear.
 3. After successful login, Thunderbird completes OAuth2 and stores tokens as usual.
-4. Open **Tools → Developer Tools → Error Console** and search for `"[OAuthPatch]"`.
+4. Open the OAuthPatch add-on console and search for `"[OAuthPatch]"`.
 
 ---
 
 ## Logging & diagnostics
 
 Logs use `console.log/warn/error` with the `[OAuthPatch]` prefix.
+
+On Thunderbird 154+, background add-on logs may not appear in the global
+Error Console. Open **Add-ons and Themes → Gear icon → Debug Add-ons**, find
+OAuthPatch, and click **Inspect** to view the add-on console.
 
 Typical messages:
 - `background loaded`
@@ -336,8 +341,17 @@ Typical messages:
 
 If something fails after a Thunderbird update, include:
 - Thunderbird version (must be **140+**)
-- the Error Console output around `[OAuthPatch]`
+- the OAuthPatch add-on console output around `[OAuthPatch]`
 - whether you used URL/file/pasted JSON/profile
+
+### Account Hub offers password authentication
+
+Version 0.3.2 fixes a startup race where provider initialization could run
+before asynchronous configuration loading completed. This could cause Account
+Hub to offer password authentication instead of OAuth2.
+
+After updating, apply the provider configuration and reopen Account Hub. Verify
+that both `scopes.imap` and `scopes.smtp` are configured.
 
 ---
 
