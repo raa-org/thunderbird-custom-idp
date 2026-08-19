@@ -11,6 +11,7 @@
     {
       "name": "applyConfig",
       "type": "function",
+      "async": true,
       "description": "Write one provider or a {providers: [...]} config, optionally overriding built-in mappings and disabling Exchange Autodiscovery; secrets can be stored in Login Manager / memory / prefs",
       "parameters": [
         { "name": "config", "type": "object", "additionalProperties": true },
@@ -25,6 +26,7 @@
     {
       "name": "loadAndApplyFromProfile",
       "type": "function",
+      "async": true,
       "description": "Read oauthpatch JSON from Thunderbird profile dir and apply",
       "parameters": [
         { "name": "filename", "type": "string" },
@@ -39,12 +41,14 @@
     {
       "name": "resetSecret",
       "type": "function",
+      "async": true,
       "description": "Remove client secret from Login Manager and prefs",
       "parameters": []
     },
     {
       "name": "unlockSecret",
       "type": "function",
+      "async": true,
       "description": "Trigger a read to prompt Primary Password once per session",
       "parameters": []
     }
